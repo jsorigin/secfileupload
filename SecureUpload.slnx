@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SecureUpload.Core/SecureUpload.Core.csproj" />
+    <Project Path="src/SecureUpload.Management/SecureUpload.Management.csproj" />
+    <Project Path="src/SecureUpload.Processor/SecureUpload.Processor.csproj" />
+    <Project Path="src/SecureUpload.Web/SecureUpload.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SecureUpload.Core.Tests/SecureUpload.Core.Tests.csproj" />
+    <Project Path="tests/SecureUpload.EndToEnd.Tests/SecureUpload.EndToEnd.Tests.csproj" />
+    <Project Path="tests/SecureUpload.Management.Tests/SecureUpload.Management.Tests.csproj" />
+    <Project Path="tests/SecureUpload.Processor.Tests/SecureUpload.Processor.Tests.csproj" />
+    <Project Path="tests/SecureUpload.Web.Tests/SecureUpload.Web.Tests.csproj" />
+  </Folder>
+</Solution>

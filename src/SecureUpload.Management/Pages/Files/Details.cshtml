@@ -1,0 +1,250 @@
+@page
+@using SecureUpload.Core.Files
+@using SecureUpload.Management.Files
+@model SecureUpload.Management.Pages.Files.DetailsModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    if (!string.IsNullOrWhiteSpace(Model.MetaRefreshContent))
+    {
+        ViewData["MetaRefresh"] = Model.MetaRefreshContent;
+    }
+}
+
+<nav class="page-nav" aria-label="File details navigation">
+    <a href="@Model.ReturnUrl" class="secondary-link">Back to inventory</a>
+</nav>
+
+@if (!ViewContext.ModelState.IsValid)
+{
+    <div asp-validation-summary="ModelOnly" class="state-card state-card--error" role="alert" aria-atomic="true"></div>
+}
+
+@if (Model.HasStatusPanel)
+{
+    <section class="panel action-status @(Model.StatusIsAlert ? "action-status--error" : string.Empty)"
+             aria-labelledby="action-status-heading">
+        <div class="section-header">
+            <div>
+                <h2 id="action-status-heading" tabindex="-1" data-focus-target="@(Model.ShouldFocusStatus ? "true" : "false")">
+                    @Model.StatusHeading
+                </h2>
+                <p class="section-copy"
+                   role="@(Model.StatusIsAlert ? "alert" : "status")"
+                   aria-live="@(Model.StatusIsAlert ? "assertive" : "polite")"
+                   aria-atomic="true">
+                    @Model.StatusMessage
+                </p>
+            </div>
+            @if (!string.IsNullOrWhiteSpace(Model.RefreshNowUrl))
+            {
+                <a href="@Model.RefreshNowUrl" class="secondary-link">Refresh now</a>
+            }
+        </div>
+    </section>
+}
+
+@switch (Model.Lookup.State)
+{
+    case FileLookupState.Found:
+        var file = Model.Lookup.File!;
+        <section class="hero" aria-labelledby="details-title">
+            <h1 id="details-title">@file.OriginalFileName</h1>
+            <p class="lede">
+                File details are loaded directly from the status table using the exact file ID.
+            </p>
+        </section>
+
+        <section class="panel" aria-labelledby="status-title">
+            <div class="section-header">
+                <div>
+                    <h2 id="status-title">Current state</h2>
+                    <p class="section-copy">Management labels avoid raw storage URIs and reflect the live status row.</p>
+                </div>
+                <p class="summary-text" role="status" aria-live="polite" aria-atomic="true">@file.StateSummary</p>
+            </div>
+            <div class="badge-row">
+                <span class="badge badge--@file.StatusKey">@file.StatusLabel</span>
+                <span class="badge badge--@file.ScanResultKey">@file.ScanResultLabel</span>
+                <span class="badge badge--@file.DestinationKey">@file.DestinationLabel</span>
+            </div>
+        </section>
+
+        <section class="panel" aria-labelledby="metadata-title">
+            <h2 id="metadata-title">Metadata</h2>
+            <dl class="metadata-grid">
+                <div>
+                    <dt>File ID</dt>
+                    <dd><code class="mono">@file.StableId</code></dd>
+                </div>
+                <div>
+                    <dt>Media type</dt>
+                    <dd>@file.MediaType</dd>
+                </div>
+                <div>
+                    <dt>Created</dt>
+                    <dd>@file.CreatedAtDisplay</dd>
+                </div>
+                <div>
+                    <dt>Uploaded</dt>
+                    <dd>@file.UploadedAtDisplay</dd>
+                </div>
+                <div>
+                    <dt>Last updated</dt>
+                    <dd>@file.UpdatedAtDisplay</dd>
+                </div>
+                <div>
+                    <dt>Size</dt>
+                    <dd>@file.SizeDisplay</dd>
+                </div>
+                <div>
+                    <dt>Processing started</dt>
+                    <dd>@file.ProcessingStartedAtDisplay</dd>
+                </div>
+                <div>
+                    <dt>Scan completed</dt>
+                    <dd>@file.ScanCompletedAtDisplay</dd>
+                </div>
+                <div>
+                    <dt>Logical destination</dt>
+                    <dd>@file.DestinationLabel</dd>
+                </div>
+            </dl>
+        </section>
+
+        @if (Model.CanDownloadClean || Model.CanRequestDeletion)
+        {
+            <section class="panel" aria-labelledby="actions-title">
+                <h2 id="actions-title">File actions</h2>
+                <div class="action-grid">
+                    <article class="action-card">
+                        <h3>Download clean copy</h3>
+                        <p class="section-copy">
+                            The management app streams the verified clean copy directly and never issues a reusable storage URL.
+                        </p>
+                        @if (Model.CanDownloadClean)
+                        {
+                            <a asp-page="/Files/Details"
+                               asp-page-handler="Download"
+                               asp-route-fileId="@file.StableId"
+                               asp-route-returnUrl="@Model.ReturnUrl"
+                               class="secondary-link">
+                                Download clean file
+                            </a>
+                        }
+                        else
+                        {
+                            <p class="status-note">A clean download is only available while the live file state is Available.</p>
+                        }
+                    </article>
+
+                    @if (Model.CanRequestDeletion)
+                    {
+                        <article class="action-card action-card--danger">
+                            <h3>Request permanent deletion</h3>
+                            <p class="section-copy">
+                                This is irreversible. The processor removes file content from storage after the status row is marked Deleting.
+                            </p>
+                            <form method="post"
+                                  asp-page-handler="Delete"
+                                  class="delete-form"
+                                  data-prevent-double-submit="true">
+                                <input type="hidden" name="fileId" value="@file.StableId" />
+                                <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+                                <div class="form-field">
+                                    <label for="DeleteConfirmation">
+                                        Type <span class="mono">@file.OriginalFileName</span> to confirm permanent deletion
+                                    </label>
+                                    <input id="DeleteConfirmation"
+                                           name="DeleteConfirmation"
+                                           type="text"
+                                           value="@Model.DeleteConfirmation"
+                                           autocomplete="off"
+                                           spellcheck="false"
+                                           aria-describedby="delete-confirmation-help" />
+                                    <p id="delete-confirmation-help" class="field-hint">
+                                        Deletion removes file content from storage and keeps only the audit tombstone.
+                                    </p>
+                                    <span asp-validation-for="DeleteConfirmation" class="field-error"></span>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit"
+                                            class="primary-button danger-button"
+                                            data-busy-text="Requesting deletion...">
+                                        Request permanent deletion
+                                    </button>
+                                    <a href="@Model.CancelDeleteUrl" class="secondary-link">Cancel</a>
+                                </div>
+                            </form>
+                        </article>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (file.DeletionRequestedAt is not null || file.DeletedAt is not null || !string.IsNullOrWhiteSpace(file.DeletedBy))
+        {
+            <section class="panel" aria-labelledby="deletion-title">
+                <h2 id="deletion-title">Deletion tracking</h2>
+                <dl class="metadata-grid">
+                    <div>
+                        <dt>Deletion requested</dt>
+                        <dd>@file.DeletionRequestedAtDisplay</dd>
+                    </div>
+                    <div>
+                        <dt>Deleted</dt>
+                        <dd>@file.DeletedAtDisplay</dd>
+                    </div>
+                    <div>
+                        <dt>Deleted by object ID</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(file.DeletedBy) ? "Not recorded" : file.DeletedBy)</dd>
+                    </div>
+                </dl>
+            </section>
+        }
+        break;
+
+    case FileLookupState.InvalidId:
+        <section class="hero" aria-labelledby="details-title">
+            <h1 id="details-title">File ID is invalid</h1>
+            <p class="lede">Enter a 64-character hexadecimal file ID from the management inventory or a host status response.</p>
+        </section>
+        break;
+
+    case FileLookupState.NotFound:
+        <section class="hero" aria-labelledby="details-title">
+            <h1 id="details-title">File not found</h1>
+            <p class="lede">No retained status row matched the requested file ID.</p>
+        </section>
+        break;
+
+    case FileLookupState.StorageError:
+        <section class="hero" aria-labelledby="details-title">
+            <h1 id="details-title">File details are temporarily unavailable</h1>
+            <p class="lede">The management app could not load the requested status row from storage. Try again.</p>
+        </section>
+        break;
+}
+
+<script>
+(() => {
+    const focusTarget = document.querySelector('[data-focus-target="true"]');
+    if (focusTarget instanceof HTMLElement) {
+        focusTarget.focus();
+    }
+
+    const form = document.querySelector('[data-prevent-double-submit="true"]');
+    if (!(form instanceof HTMLFormElement)) {
+        return;
+    }
+
+    form.addEventListener('submit', () => {
+        const button = form.querySelector('[data-busy-text]');
+        if (!(button instanceof HTMLButtonElement) || button.disabled) {
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = button.dataset.busyText ?? button.textContent ?? '';
+    });
+})();
+</script>

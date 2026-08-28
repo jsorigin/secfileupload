@@ -1,0 +1,296 @@
+@page
+@using SecureUpload.Management.Files
+@model SecureUpload.Management.Pages.IndexModel
+@{
+    ViewData["Title"] = "File management";
+}
+
+<section class="hero" aria-labelledby="page-title">
+    <h1 id="page-title">Secure file inventory</h1>
+    <p class="lede">
+        Browse the current bounded inventory, filter exact lifecycle states, and
+        jump straight to a known file by stable ID when routine browsing is unavailable.
+    </p>
+</section>
+
+<div class="support-grid">
+    <section class="identity-card" aria-labelledby="identity-title">
+        <h2 id="identity-title">Authenticated session</h2>
+        <dl class="identity-list">
+            @if (!string.IsNullOrWhiteSpace(Model.DisplayName))
+            {
+                <div>
+                    <dt>Signed in as</dt>
+                    <dd>@Model.DisplayName</dd>
+                </div>
+            }
+            <div>
+                <dt>Object ID</dt>
+                <dd id="signed-in-oid">@Model.ObjectId</dd>
+            </div>
+            <div>
+                <dt>Required role</dt>
+                <dd>@Model.RequiredRole</dd>
+            </div>
+        </dl>
+        <p class="status-note">
+            Every page and handler requires a validated Microsoft Entra user from the
+            expected tenant who carries the management app role.
+        </p>
+    </section>
+
+    <section class="panel lookup-card" aria-labelledby="lookup-title">
+        <h2 id="lookup-title">Look up an exact file ID</h2>
+        <p class="status-note">
+            Exact file lookup uses a direct status-table point query, so it remains
+            available even when the global inventory is over capacity.
+        </p>
+        <form method="get" asp-page="/Files/Details" class="lookup-form">
+            <input type="hidden" name="returnUrl" value="@Model.CurrentInventoryPath" />
+            <div class="form-field">
+                <label for="fileId">Stable file ID</label>
+                <input id="fileId"
+                       name="fileId"
+                       type="text"
+                       inputmode="text"
+                       autocomplete="off"
+                       spellcheck="false"
+                       maxlength="64"
+                       pattern="[0-9a-fA-F]{64}"
+                       aria-describedby="file-id-help" />
+                <p id="file-id-help" class="field-hint">
+                    Enter the 64-character hexadecimal file ID from a host status surface or prior inventory result.
+                </p>
+            </div>
+            <button type="submit" class="primary-button">Open file details</button>
+        </form>
+    </section>
+</div>
+
+<section class="panel" aria-labelledby="filters-title">
+    <div class="section-header">
+        <div>
+            <h2 id="filters-title">Filter inventory</h2>
+            <p class="section-copy">
+                Every request reads the live status table, applies safe filename search, then paginates the complete bounded result.
+            </p>
+        </div>
+    </div>
+    <form method="get" class="filter-form">
+        <input type="hidden" name="page" value="1" />
+        <div class="form-field">
+            <label for="search">Filename search</label>
+            <input id="search"
+                   name="search"
+                   type="search"
+                   value="@Model.Inventory.Query.Search"
+                   maxlength="@Model.MaximumSearchLength"
+                   aria-describedby="search-help" />
+            <p id="search-help" class="field-hint">Search uses normalized filenames and ignores case.</p>
+        </div>
+        <div class="form-field">
+            <label for="filter">Status</label>
+            <select id="filter" name="filter">
+                @foreach (var option in Model.FilterOptions)
+                {
+                    if (string.Equals(option.Value, Model.Inventory.Query.Filter, StringComparison.Ordinal))
+                    {
+                        <option value="@option.Value" selected="selected">@option.Label</option>
+                    }
+                    else
+                    {
+                        <option value="@option.Value">@option.Label</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="form-field form-field--compact">
+            <label for="pageSize">Page size</label>
+            <input id="pageSize"
+                   name="pageSize"
+                   type="number"
+                   inputmode="numeric"
+                   min="1"
+                   max="@Model.MaximumPageSize"
+                   value="@Model.Inventory.Query.PageSize" />
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="primary-button">Apply filters</button>
+            <a asp-page="/Index" class="secondary-link">Clear filters</a>
+        </div>
+    </form>
+</section>
+
+<section class="panel" aria-labelledby="results-title">
+    <div class="section-header results-header">
+        <div>
+            <h2 id="results-title">Inventory results</h2>
+            <p class="section-copy">Sorted by creation time, newest first, with stable ID tie ordering.</p>
+        </div>
+        <p id="inventory-status" class="summary-text" role="status" aria-live="polite" aria-atomic="true">
+            @Model.InventorySummary
+        </p>
+    </div>
+
+    @switch (Model.Inventory.State)
+    {
+        case InventoryLoadState.Ready:
+            <div class="inventory-table-wrap">
+                <table class="inventory-table">
+                    <caption class="sr-only">Inventory results in a table layout</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">File</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Scan result</th>
+                            <th scope="col">Destination</th>
+                            <th scope="col">Created</th>
+                            <th scope="col">Uploaded</th>
+                            <th scope="col">Size</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var file in Model.Inventory.Files)
+                        {
+                            <tr>
+                                <th scope="row">
+                                    <a asp-page="/Files/Details"
+                                       asp-route-fileId="@file.StableId"
+                                       asp-route-returnUrl="@Model.CurrentInventoryPath"
+                                       class="details-link">
+                                        @file.OriginalFileName
+                                    </a>
+                                    <div class="subtle">ID <code class="mono">@file.StableId</code></div>
+                                </th>
+                                <td><span class="badge badge--@file.StatusKey">@file.StatusLabel</span></td>
+                                <td><span class="badge badge--@file.ScanResultKey">@file.ScanResultLabel</span></td>
+                                <td>@file.DestinationLabel</td>
+                                <td>@file.CreatedAtDisplay</td>
+                                <td>@file.UploadedAtDisplay</td>
+                                <td>@file.SizeDisplay</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="inventory-cards" aria-label="Inventory results in a small-screen layout">
+                @foreach (var file in Model.Inventory.Files)
+                {
+                    <article class="inventory-card">
+                        <h3>
+                            <a asp-page="/Files/Details"
+                               asp-route-fileId="@file.StableId"
+                               asp-route-returnUrl="@Model.CurrentInventoryPath"
+                               class="details-link">
+                                @file.OriginalFileName
+                            </a>
+                        </h3>
+                        <p class="subtle">ID <code class="mono">@file.StableId</code></p>
+                        <dl class="card-details">
+                            <div>
+                                <dt>Status</dt>
+                                <dd><span class="badge badge--@file.StatusKey">@file.StatusLabel</span></dd>
+                            </div>
+                            <div>
+                                <dt>Scan result</dt>
+                                <dd><span class="badge badge--@file.ScanResultKey">@file.ScanResultLabel</span></dd>
+                            </div>
+                            <div>
+                                <dt>Logical destination</dt>
+                                <dd>@file.DestinationLabel</dd>
+                            </div>
+                            <div>
+                                <dt>Created</dt>
+                                <dd>@file.CreatedAtDisplay</dd>
+                            </div>
+                            <div>
+                                <dt>Uploaded</dt>
+                                <dd>@file.UploadedAtDisplay</dd>
+                            </div>
+                            <div>
+                                <dt>Size</dt>
+                                <dd>@file.SizeDisplay</dd>
+                            </div>
+                        </dl>
+                    </article>
+                }
+            </div>
+
+            @if (Model.Inventory.TotalPages > 1)
+            {
+                <nav class="pagination" aria-label="Inventory pages">
+                    @if (Model.Inventory.HasPreviousPage)
+                    {
+                        <a asp-page="/Index"
+                           asp-route-search="@Model.Inventory.Query.Search"
+                           asp-route-filter="@Model.Inventory.Query.Filter"
+                           asp-route-page="@(Model.Inventory.Query.PageNumber - 1)"
+                           asp-route-pageSize="@Model.Inventory.Query.PageSize"
+                           class="secondary-link">
+                            Previous page
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="secondary-link is-disabled" aria-disabled="true">Previous page</span>
+                    }
+
+                    <p class="pagination-summary">
+                        Page @Model.Inventory.Query.PageNumber of @Model.Inventory.TotalPages
+                    </p>
+
+                    @if (Model.Inventory.HasNextPage)
+                    {
+                        <a asp-page="/Index"
+                           asp-route-search="@Model.Inventory.Query.Search"
+                           asp-route-filter="@Model.Inventory.Query.Filter"
+                           asp-route-page="@(Model.Inventory.Query.PageNumber + 1)"
+                           asp-route-pageSize="@Model.Inventory.Query.PageSize"
+                           class="secondary-link">
+                            Next page
+                        </a>
+                    }
+                    else
+                    {
+                        <span class="secondary-link is-disabled" aria-disabled="true">Next page</span>
+                    }
+                </nav>
+            }
+            break;
+
+        case InventoryLoadState.Empty:
+            <div class="state-card" role="status" aria-live="polite" aria-atomic="true">
+                <h3>No files yet</h3>
+                <p>No status records have been retained yet.</p>
+            </div>
+            break;
+
+        case InventoryLoadState.NoMatch:
+            <div class="state-card" role="status" aria-live="polite" aria-atomic="true">
+                <h3>No matching files</h3>
+                <p>Adjust the filename search, status filter, or page size and try again.</p>
+            </div>
+            break;
+
+        case InventoryLoadState.CapacityExceeded:
+            <div class="state-card state-card--error" role="alert" aria-atomic="true">
+                <h3>Inventory browsing is paused</h3>
+                <p>
+                    The retained status table exceeded the safe browsing capacity. No partial file list is shown.
+                    Use the exact file ID lookup above while the capacity runbook is followed.
+                </p>
+            </div>
+            break;
+
+        case InventoryLoadState.StorageError:
+            <div class="state-card state-card--error" role="alert" aria-atomic="true">
+                <h3>Inventory could not be loaded</h3>
+                <p>
+                    The management app could not read the current status snapshot. No stale rows are reused.
+                    Try again or open a known file by exact ID.
+                </p>
+            </div>
+            break;
+    }
+</section>

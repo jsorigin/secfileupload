@@ -1,0 +1,36 @@
+@using SecureUpload.Management.Security
+@{
+    var metaRefresh = ViewData["MetaRefresh"] as string;
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] is string title ? $"{title} - Secure file management" : "Secure file management")</title>
+    @if (!string.IsNullOrWhiteSpace(metaRefresh))
+    {
+        <meta http-equiv="refresh" content="@metaRefresh" />
+    }
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="app-shell">
+        <header class="app-header">
+            <div>
+                <p class="eyebrow">Secure Upload</p>
+                <p class="app-title"><a asp-page="/Index">Secure file management</a></p>
+            </div>
+            <form method="post" asp-page="/Index" asp-page-handler="SignOut" class="signout-form">
+                <input type="hidden" name="returnUrl" value="@ManagementAuthorization.BuildCurrentLocalPath(Context.Request)" />
+                <button class="signout-button" type="submit">Sign out</button>
+            </form>
+        </header>
+
+        <main id="main-content" tabindex="-1">
+            @RenderBody()
+        </main>
+    </div>
+</body>
+</html>

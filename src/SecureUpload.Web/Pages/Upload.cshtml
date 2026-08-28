@@ -1,0 +1,32 @@
+@page "/upload"
+@model SecureUpload.Web.Pages.UploadModel
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="en" data-theme="@Model.Theme">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Model.Title</title>
+    <link rel="stylesheet" href="/css/uploader.css" />
+</head>
+<body style="--accent: @Model.AccentColor">
+    <main class="uploader" aria-labelledby="upload-title">
+        <h1 id="upload-title">@Model.Title</h1>
+        <p id="upload-help">@Model.HelpText</p>
+        <form id="upload-form" enctype="multipart/form-data">
+            <label for="file">Choose one file</label>
+            <input id="file" name="file" type="file" aria-describedby="upload-help" required />
+            <button id="submit" type="submit">Upload file</button>
+            <button id="retry" type="button" hidden>Choose another file</button>
+        </form>
+        <section id="status-panel" tabindex="-1" aria-live="polite" aria-atomic="true">
+            <strong id="status-title">Ready to upload</strong>
+            <p id="status-detail">Select one supported document or image.</p>
+        </section>
+    </main>
+    <script id="upload-config" type="application/json">@Html.Raw(Model.ClientConfiguration)</script>
+    <script src="/js/uploader.js" defer></script>
+</body>
+</html>

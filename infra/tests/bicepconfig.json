@@ -1,0 +1,10 @@
+{
+  "experimentalFeaturesEnabled": {
+    "assertions": true
+  },
+  "analyzers": {
+    "core": {
+      "enabled": true
+    }
+  }
+}
